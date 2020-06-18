@@ -1,0 +1,3 @@
+#Test config file
+num_users: 5000
+mode: reduced_int_prob

@@ -1,0 +1,56 @@
+# The model configuration for the OpDisc model
+
+# ---
+## Network structure and Simulation Setup ..........................................
+
+# Below, all parameters for the network structure and properties are set.
+#
+# 'model':          graph creation algorithm (available models: ErdosRenyi (random),
+#                   BarabasiAlbert (scale-free), BollobasRiordan (scale-free directed),
+#                   WattsStrogatz (small-world), regular)
+# 'num_vertices':   total number of vertices
+# 'mean_degree':    mean degree (degree distribution depends on chosen nw-type)
+# user network settings
+nw:
+
+  model: ErdosRenyi
+
+  num_vertices: 5000
+    # The number of vertices
+
+    # The mean degree (equals degree in regular model;
+    #                  not relevant in BollobasRiordan model)
+  mean_degree: 0
+    # Model-specific parameters
+  ErdosRenyi:
+        # Allow parallel edges
+    parallel: true
+
+        # Allow self edges
+    self_edges: false
+
+  WattsStrogatz:
+        # Rewiring probability
+    p_rewire: 0.2
+
+  BarabasiAlbert:
+        # Allow parallel edges
+    parallel: false
+
+  BollobasRiordan:
+        # Graph generating parameters
+    alpha: 0.2
+    beta: 0.8
+    gamma: 0.
+    del_in: 0.
+    del_out: 0.5
+
+#Dynamics ----------------------------------------------------------------------
+
+mode: conflict_dir
+extremism: true
+number_of_groups: 3
+discriminators: 0.3
+homophily_parameter: 0.3
+tolerance: 0.4
+susceptibility: 0.4

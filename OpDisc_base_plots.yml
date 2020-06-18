@@ -1,0 +1,141 @@
+# Base configuration for the OpDisc plots
+---
+densities:
+    creator: universe
+    universes: all
+    module: model_plots.OpDisc
+    plot_func: densities
+    helpers:
+       set_labels:
+          x: User opinion
+          y: Time [writes]
+    num_bins: 100
+    val_range: # range to be used to compute bins, [min, max]
+    file_ext: pdf
+
+group_avgs:
+    creator: universe
+    universes: all
+    module: model_plots.OpDisc
+    plot_func: group_avg
+    helpers:
+        set_labels:
+           x: User opinion
+           y: Time
+    to_plot: opinion
+    val_range: # range to be used to compute bins, [min, max]
+
+group_avg_anim:
+    creator: multiverse
+    module: model_plots.OpDisc
+    plot_func: group_avg_anim
+    helpers:
+       set_labels:
+          x: User opinion
+          y: Time [step]
+    num_bins: 100 #number of bins to be used for histogram
+    val_range: [0, 1]
+    write: False
+    animation:
+      enabled: True
+      writer_kwargs:
+        frames:
+          saving:
+            dpi: 300
+        ffmpeg:
+          init:
+            fps: 8
+          saving:
+            dpi: 300
+      animation_update_kwargs:
+        stepsize: 1
+      writer: ffmpeg
+    file_ext: mp4
+
+opinion:
+    creator: universe
+    universes: all
+    module: model_plots.OpDisc
+    plot_func: opinion
+
+opinion_animation:
+    creator: universe
+    universes: all
+    module: model_plots.OpDisc
+    plot_func: opinion_animation
+    helpers:
+      set_labels:
+          x: User opinion
+          y: Group size
+    num_bins: # number of bins to be used for histogram
+    time_idx: # plot one specific time frame
+    val_range: # range to be used to compute bins, [min, max]
+    animation:
+      enabled: true
+      writer_kwargs:
+        frames:
+          saving:
+            dpi: 300
+        ffmpeg:
+          init:
+            fps: 8
+          saving:
+            dpi: 300
+      animation_update_kwargs:
+        stepsize: 10
+      writer: ffmpeg
+    file_ext: mp4
+
+opinion_groups:
+    creator: universe
+    universes: all
+    module: model_plots.OpDisc
+    plot_func: op_groups
+    helpers:
+       set_labels:
+          x: User opinion
+          y: Group size
+    num_bins: 100 #number of bins to be used for histogram
+    time_idx:
+    to_plot: opinion
+    val_range: [0, 1]
+    animation:
+      enabled: true
+      writer_kwargs:
+        frames:
+          saving:
+            dpi: 300
+        ffmpeg:
+          init:
+            fps: 8
+          saving:
+            dpi: 300
+      animation_update_kwargs:
+        stepsize: 10
+      writer: ffmpeg
+    file_ext: mp4
+
+sweep:
+    creator: multiverse
+    module: model_plots.OpDisc
+    plot_func: sweep
+
+#-------------------------------------------------------------------------------
+#color cyclers
+.cycler.bright_colors:
+  style:
+    axes.prop_cycle: "cycler('color', ['gold','orangered',
+                      'firebrick','darkred','indigo','navy','royalblue',
+                      'cornflowerblue','slategray','peru','saddlebrown','black'])"
+.cycler.dark_colors:
+  style:
+    axes.prop_cycle: "cycler('color', ['slategray', 'dodgerblue', 'cornflowerblue',
+                             'navy', 'slategray', 'darkorange', 'royalblue',
+                             'peru', 'orange', 'darkred','indigo','saddlebrown',
+                             'firebrick','black'])"
+.cycler.high_contrast_colors:
+  style:
+    axes.prop_cycle: "cycler('color', ['gold', 'indigo', 'peru', 'darkorange',
+                             'navy', 'orangered', 'royalblue', 'firebrick',
+                             'cornflowerblue', 'darkred', 'slategray',
+                             'saddlebrown','black'])"

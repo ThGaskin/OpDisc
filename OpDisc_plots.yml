@@ -1,0 +1,53 @@
+densities:
+    based_on: densities
+    title: Opinion clusters over time
+
+group_avgs:
+    based_on:
+      - group_avgs
+      - .cycler.bright_colors
+
+group_avgs_anim:
+   based_on:
+     - group_avg_anim
+     - .cycler.bright_colors
+   select:
+       fields:
+           opinion: data/OpDisc/nw/opinion
+           group_label: data/OpDisc/nw/group_label
+       subspace:
+   dim: homophily_parameter
+   animation:
+     enabled: False
+   write: True
+
+opinion:
+    based_on:
+      - opinion
+      - .cycler.dark_colors
+
+opinion_anim:
+    based_on:
+      - opinion_animation
+      - .cycler.dark_colors
+
+opinion_groups:
+    based_on:
+      - opinion_groups
+      - .cycler.high_contrast_colors
+
+
+
+# sweep:
+#   based_on: sweep
+#   select:
+#     fields:
+#       opinion: data/OpDisc/nw/opinion
+#       group_label: data/OpDisc/nw/group_label
+#     idx_as_label: True
+#   dim: susceptibility
+#   dim2: tolerance
+#   plot_prop: tipping_points
+#   stack: False
+#   enabled: True
+#   write_only: True
