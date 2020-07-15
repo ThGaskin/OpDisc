@@ -12,7 +12,11 @@ int main (int, char** argv)
 
         auto model_cfg = pp.get_cfg()["OpDisc"];
         auto mode = Utopia::get_as<std::string>("mode", model_cfg);
-        if (mode=="conflict_dir"){
+        if (mode=="ageing"){
+            OpDisc<ageing> model("OpDisc", pp);
+            model.run();
+        }
+        else if (mode=="conflict_dir"){
             OpDisc<conflict_dir> model("OpDisc", pp);
             model.run();
         }

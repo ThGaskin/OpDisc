@@ -1,5 +1,11 @@
 # Base configuration for the OpDisc plots
 ---
+bifurcation:
+    creator: multiverse
+    module: model_plots.OpDisc
+    plot_func: bifurcation
+    dim: homophily_parameter
+
 densities:
     creator: universe
     universes: all
@@ -10,7 +16,6 @@ densities:
           x: User opinion
           y: Time [writes]
     num_bins: 100
-    val_range: # range to be used to compute bins, [min, max]
     file_ext: pdf
 
 group_avgs:
@@ -22,8 +27,6 @@ group_avgs:
         set_labels:
            x: User opinion
            y: Time
-    to_plot: opinion
-    val_range: # range to be used to compute bins, [min, max]
 
 group_avg_anim:
     creator: multiverse
@@ -57,6 +60,7 @@ opinion:
     universes: all
     module: model_plots.OpDisc
     plot_func: opinion
+    age_groups: [10, 20, 40, 60, 80]
 
 opinion_animation:
     creator: universe
@@ -67,9 +71,9 @@ opinion_animation:
       set_labels:
           x: User opinion
           y: Group size
-    num_bins: # number of bins to be used for histogram
+    num_bins: 100
     time_idx: # plot one specific time frame
-    val_range: # range to be used to compute bins, [min, max]
+    val_range: [0, 1]
     animation:
       enabled: true
       writer_kwargs:
@@ -96,8 +100,6 @@ opinion_groups:
           x: User opinion
           y: Group size
     num_bins: 100 #number of bins to be used for histogram
-    time_idx:
-    to_plot: opinion
     val_range: [0, 1]
     animation:
       enabled: true
@@ -135,7 +137,8 @@ sweep:
                              'firebrick','black'])"
 .cycler.high_contrast_colors:
   style:
-    axes.prop_cycle: "cycler('color', ['gold', 'indigo', 'peru', 'darkorange',
-                             'navy', 'orangered', 'royalblue', 'firebrick',
+    axes.prop_cycle: "cycler('color', ['gold', 'cornflowerblue', 'darkorange',
+                             'navy', 'orangered', 'peru', 'navy', 'darkorange',
+                             'indigo', 'royalblue', 'firebrick',
                              'cornflowerblue', 'darkred', 'slategray',
                              'saddlebrown','black'])"
