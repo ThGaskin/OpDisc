@@ -26,8 +26,9 @@ void reinitialise_as_child( NWType& nw,
 template<typename NWType, typename RNGType>
 void user_revision( NWType& nw,
                     bool extremism,
-                    const int life_expectancy,
-                    const int peer_radius,
+                    const double life_expectancy,
+                    const double peer_radius,
+                    const double time_scale,
                     const double t,
                     RNGType& rng ){
     /** Chooses interaction partners, checks their groups and selects
@@ -38,7 +39,7 @@ void user_revision( NWType& nw,
     auto nb = random_vertex(nw, rng);
     while (nb==v){ nb = random_vertex(nw, rng); }
     const double op_v = nw[v].opinion;
-    const int age_difference = abs(nw[v].group-nw[nb].group);
+    const double age_difference = fabs(nw[v].group-nw[nb].group);
 
     // the interaction between members of the same generation is always the same
     if (age_difference<peer_radius) {
@@ -71,12 +72,12 @@ void user_revision( NWType& nw,
     if (nw[v].group>life_expectancy) {
         reinitialise_as_child(nw, v, extremism, t, rng);
     }
-    else { ++nw[v].group; }
+    else { nw[v].group+=time_scale; }
 
     if (nw[nb].group>life_expectancy) {
         reinitialise_as_child(nw, nb, extremism, t, rng);
     }
-    else { ++nw[nb].group; }
+    else { nw[nb].group+=time_scale; }
 
 } //user_revision
 

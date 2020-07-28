@@ -15,29 +15,35 @@ matplotlib.rcParams['font.family']='serif'
 rc('text', usetex=True)
 
 #formatting ....................................................................
-model_modes = {'ageing': 'directed conflict with ageing',
-               'conflict_dir': 'directed conflict',
-               'conflict_undir': 'undirected conflict',
-               'isolated_1' : 'isolated discr. (type 1)',
-               'isolated_2' : 'isolated discr. (type 2)',
-               'reduced_s' : 'reduced susceptibility',
-               'reduced_int_prob': 'reduced interaction probability'}
+model_modes = {
+    'ageing': 'directed conflict with ageing',
+    'conflict_dir': 'directed conflict',
+    'conflict_undir': 'undirected conflict',
+    'isolated_1' : 'isolated discr. (type 1)',
+    'isolated_2' : 'isolated discr. (type 2)',
+    'reduced_s' : 'reduced susceptibility',
+    'reduced_int_prob': 'reduced interaction probability'
+}
 
-parameters = {'discriminators': r'Discriminator fraction $p_d$',
-              'homophily_parameter': r'$p_\mathrm{hom}$',
-              'life_expectancy': 'Life expectancy',
-              'number_of_groups': 'Number of groups',
-              'peer_radius': 'Peer radius',
-              'susceptibility': r'Susceptibility $\mu$',
-              'tolerance': r'Tolerance $\epsilon$'}
+parameters = {
+    'discriminators': r'Discriminator fraction $p_d$',
+    'homophily_parameter': r'$p_\mathrm{hom}$',
+    'life_expectancy': 'Life expectancy',
+    'number_of_groups': 'Number of groups',
+    'peer_radius': 'Peer radius',
+    'susceptibility': r'Susceptibility $\mu$',
+    'tolerance': r'Tolerance $\epsilon$'
+}
 
-titles = {'bifurcation': r'\bf Bifurcation diagramme',
-          'densities' : r'\bf Opinion clusters over time',
-          'group_avg': r'\bf Average opinion by group',
-          'group_avgs_anim': r'\bf Average opinion by group',
-          'opinion': r'\bf Opinion distribution',
-          'opinion_anim': r'\bf Opinion distribution over time',
-          'op_groups' : r'\bf Opinion evolution by group'}
+titles = {
+    'bifurcation': r'\bf Bifurcation diagramme',
+    'densities' : r'\bf Opinion clusters over time',
+    'group_avg': r'\bf Average opinion by group',
+    'group_avgs_anim': r'\bf Average opinion by group',
+    'opinion': r'\bf Opinion distribution',
+    'opinion_anim': r'\bf Opinion distribution over time',
+    'op_groups' : r'\bf Opinion evolution by group'
+}
 
 def convert_to_label(input) -> str:
     """Converts a parameter name from the cfg to a latex-readable string"""
@@ -269,6 +275,8 @@ def data_by_group(data, groups, group_list, val_range: tuple=(0., 1.),
             for k in range(len(m)):
                 data_by_group[k][t] = m[k]
 
+        #if the age range was artificially extended, remove this additional
+        #age bin
         if extended_groups:
             data_by_group.pop(-1)
             group_list.pop(-1)

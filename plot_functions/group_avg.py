@@ -57,7 +57,7 @@ def group_avg(dm: DataManager, *,
     hlpr.ax.set_ylim(time[-1], 0)
 
     #data analysis..............................................................
-    #calculate mean opinion of each group
+    #calculate mean opinion and std of each group
     means = np.zeros((time_steps, num_groups))
     stddevs = np.zeros_like(means)
     data_by_groups = data_by_group(opinions, groups, group_list, val_range, num_bins,
@@ -65,12 +65,14 @@ def group_avg(dm: DataManager, *,
     for k in range(num_groups):
         for t in range(time_steps):
             if len(data_by_groups[k][t])==0:
-                #empty slices may occur
+                #empty slices may occur if certain age groups are not present
+                #for a period of time
                 continue
             means[t, k] = np.mean(data_by_groups[k][t])
             stddevs[t, k] = np.std(data_by_groups[k][t])
 
     #plotting...................................................................
+    #get pretty labels
     if ageing:
         labels = [f"Ages {group_list[_]}-{group_list[_+1]}" for _ in range(num_groups)]
         max_age = np.amax(groups)
@@ -78,22 +80,26 @@ def group_avg(dm: DataManager, *,
             labels[-1]=f"Ages {group_list[-2]}+"
     else:
         labels = [f"Group {_+1}" for _ in range(num_groups)]
+
+    #plot mean opinion with std as errorbar
     for i in range(num_groups):
         hlpr.ax.errorbar(means[:, i], time, xerr=stddevs[:, i], lw=2, alpha=0.8,
                        elinewidth=25./time_steps, label=labels[i], capsize=0, capthick=1)
-    hlpr.ax.legend(bbox_to_anchor=(1, 1.01), loc='lower right',
-                   ncol=num_groups+1, fontsize='xx-small')
+
     hlpr.ax.set_xticks(np.linspace(0, 1, 11), minor=False)
     hlpr.ax.xaxis.grid(True, which='major', lw=0.1)
 
     #temporary..................................................................
     #calculate the global mean and plot its turning points
-    mean_glob = pd.Series(np.mean(opinions, axis=1)).rolling(window=5).mean()
+    mean_glob = pd.Series(np.mean(opinions, axis=1)).rolling(window=2).mean()
     extremes = find_extremes(mean_glob, x=time)
     hlpr.ax.plot(mean_glob, time, lw=1, color='black', label='avg', zorder=num_groups+1)
     if extremes['osc']['y']:
-        hlpr.ax.scatter(x=extremes['osc']['x'], y=extremes['osc']['y'], s=10,
+        hlpr.ax.scatter(x=extremes['osc']['y'], y=extremes['osc']['x'], s=10,
                                    color='gray', alpha=0.8, zorder=num_groups+2)
     if extremes['const']['y']:
-        hlpr.ax.scatter(x=extremes['const']['x'], y=extremes['const']['y'],
+        hlpr.ax.scatter(x=extremes['const']['y'], y=extremes['const']['x'],
                               s=10, color='red', alpha=0.8, zorder=num_groups+2)
+
+    hlpr.ax.legend(bbox_to_anchor=(1, 1.01), loc='lower right',
+                   ncol=num_groups+1, fontsize='xx-small')

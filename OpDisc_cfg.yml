@@ -1,38 +1,76 @@
 # The model configuration for the OpDisc model
-
+---
 #Network -----------------------------------------------------------------------
 # Since the interaction partners are chosen randomly, the network structure
 # is irrelevant
 nw:
   model: ErdosRenyi
-  num_vertices: 5000
-  mean_degree: 0
+  num_vertices: !is-unsigned 5000
+  mean_degree: !is-unsigned 0
   ErdosRenyi:
-    parallel: true
-    self_edges: false
+    parallel: !is-bool false
+    self_edges: !is-bool false
 
 #Dynamics ----------------------------------------------------------------------
+mode: !param
+  default: conflict_dir
+  name: model mode
+  description: the specific type of discriminatory opinion dynamics
+               you wish to model
+  is_any_of:
+    - ageing
+    - conflict_dir
+    - conflict_undir
+    - isolated_1
+    - isolated_2
+    - reduced_int_prob
+    - reduced_s
 
-# Model mode: choose from "ageing", "conflict_dir", "conflict_undir",
-# "reduced_int_prob", "reduced_s", "isolated_1", "isolated_2"
-mode: conflict_dir
+#the number of social groups
+number_of_groups: !param
+  default: 2
+  limits: [2, ~]
+  dtype: uint
 
-# turn on to let users with more extreme opinions have a reduced tolerance
-extremism: false
+discriminators: !param
+  default: 0.3
+  name: proportion of discriminators
+  description: users who refuse to interact with members of other groups
+               (only relevant for conflict_undir)
+  limits: [0, 1]
 
-number_of_groups: 3
+homophily_parameter: !param
+  default: 0.4
+  description: controls the strength of discrimination
+  limits: [0, 1]
 
-#percentage of population discriminating against other groups (only relevant for
-# conflict_undir)
-discriminators: 0.3
+tolerance: !param
+  default: 0.4
+  description: range of opinions users are willing to interact with
+  limits: [0, 1]
 
-homophily_parameter: 0.4
+#turn on to let users with more extreme opinions have a reduced tolerance
+extremism: !is-bool false
 
-tolerance: 0.4
-
-susceptibility: 0.4
+susceptibility: !param
+  default: 0.4
+  description: strength with which users are attracted to others' opinions
+  limits: [0, 1]
 
 #parameters for the ageing mode
 ageing:
-  life_expectancy: 80
-  peer_radius: 10
+  life_expectancy: !param
+    default: 80.
+    description: the lifespan after which users die
+    limits: [10, ~]
+
+  peer_radius: !param
+    default: 10.
+    description: the age radius within which users interact
+                 without discriminating
+    limits: [0,  ~]
+
+  time_scale: !param
+    default: 1.
+    description: ratio of opinion update to ageing time scales
+    limits: [0, ~]

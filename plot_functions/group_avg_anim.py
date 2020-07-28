@@ -43,6 +43,7 @@ def group_avg_anim(dm: DataManager, *,
         ValueError: if the parameter space is greater than four
         ValueError: if the sweep parameter is 'seed' (to do)
     """
+
     if not dim in mv_data.dims:
         raise ValueError(f"Dimension '{dim}' not available in multiverse data."
                          f" Available: {mv_data.coords}")
@@ -92,7 +93,7 @@ def group_avg_anim(dm: DataManager, *,
     hlpr.select_axis(0, 1)
 
     #data analysis .............................................................
-    #calculate mean opinion of each group
+    #get mean opinion and std of each group using tools.data_by_group
     means = np.zeros((len(mv_data.coords[dim]), time_steps, num_groups))
     stddevs = np.zeros_like(means)
     for param in range(len(mv_data.coords[dim])):
@@ -107,6 +108,7 @@ def group_avg_anim(dm: DataManager, *,
     log.info("Finished data analysis.")
 
     #plotting...................................................................
+    #get pretty labels
     if ageing:
         labels = [f"Ages {group_list[_]}-{group_list[_+1]}" for _ in range(num_groups)]
         max_age = np.amax(groups)
@@ -114,6 +116,8 @@ def group_avg_anim(dm: DataManager, *,
             labels[-1]=f"Ages {group_list[-2]}+"
     else:
         labels = [f"Group {_+1}" for _ in range(num_groups)]
+
+    #calculate R_p factor (for p_hom sweeps)
     P, Q = R_p_factors(num_vertices, num_groups)
     R_p_fs = R_p(mv_data.coords[dim], num_groups, P, Q, mode)
 
@@ -143,9 +147,8 @@ def group_avg_anim(dm: DataManager, *,
     hlpr.register_animation_update(update_data)
 
     #write data values for further evaluation....................................
-    """This is for the purpose of my thesis only and will be removed upon
-    completion.
-    """
+    #This is for the purpose of my thesis only and will be removed upon
+    #completion.
     if write and dim=='homophily_parameter':
         widths = np.zeros((time_steps, len(mv_data.coords[dim])))
         w_0 = np.min(means[:, -1, -1]-means[:, -1, 0])

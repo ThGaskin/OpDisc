@@ -34,7 +34,8 @@ def opinion_animation(dm: DataManager, *,
     """
 
     #figure layout..............................................................
-    #the 'conflict_dir' has a non-standard plot layout
+    #the 'conflict_undir' has a non-standard plot layout with two additional axis
+    #for the discriminators' and non-discriminators' opinion distributions
     if uni['cfg']['OpDisc']['mode']=='conflict_undir':
         disc_plot = True
         figure, axs = setup_figure(uni['cfg'], plot_name='opinion_anim',
@@ -50,21 +51,24 @@ def opinion_animation(dm: DataManager, *,
     opinions    = uni['data/OpDisc/nw/opinion']
     time        = opinions['time'].data
     time_steps  = time.size
+    #dict containing the data to plot, as well axis-specific info
     to_plot = {'all': {'data': opinions, 'axs_idx': 1, 'text': '',
                            'color': 'dodgerblue'}}
 
     #data analysis..............................................................
     if disc_plot:
         #calculate the opinions of only the discriminators and non-discriminators
-        #respectively and add the dict
+        #respectively and add to the dict
         discriminators = uni['data/OpDisc/nw/discriminators']
         p_disc = uni['cfg']['OpDisc']['discriminators']
         mask = np.empty(opinions.shape, dtype=bool)
         mask[:,:] = (discriminators == 0)
         ops_disc = np.ma.MaskedArray(opinions, mask)
         ops_nondisc = np.ma.MaskedArray(opinions, ~mask)
+
         to_plot['disc'] = {'data': ops_disc, 'axs_idx': 2,
             'color': 'teal', 'text': f'discriminators ($p_d$={p_disc})'}
+
         to_plot['nondisc'] = {'data': ops_nondisc, 'axs_idx': 3,
             'color': 'mediumaquamarine',
             'text': f'discriminators ($1-p_d$={1-p_disc})'}
@@ -78,6 +82,8 @@ def opinion_animation(dm: DataManager, *,
 
     bars = {}
     t = time_idx if time_idx else range(time_steps)
+    #calculate histograms, set axis ranges, set axis descriptions in upper left
+    #corners
     for key in to_plot.keys():
         counts, bin_edges, pos = get_hist_data(to_plot[key]['data'][t, :])
         hlpr.select_axis(0, to_plot[key]['axs_idx'])
@@ -112,7 +118,8 @@ def opinion_animation(dm: DataManager, *,
                 hlpr.select_axis(0, to_plot[key]['axs_idx'])
                 data = to_plot[key]['data'][t, :]
                 if key != 'all':
-                    #data is masked array
+                    #for disc/non-disc plots, the data is a masked array and needs
+                    #to be compressed (removing None values)
                     data = data.compressed()
                 counts_at_t, _, _ = get_hist_data(data)
                 for idx, rect in enumerate(bars[key]):

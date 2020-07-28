@@ -43,6 +43,7 @@ def bifurcation(dm: DataManager,
         is also conducted over the seed)
         ValueError: if dim does not exist
     """
+
     if not dim in mv_data.dims:
         raise ValueError(f"Dimension {dim} not available in multiverse data."
                          f" Available: {mv_data.coords}")
@@ -52,6 +53,8 @@ def bifurcation(dm: DataManager,
     cfg = dm['multiverse'].pspace.default
     keys = dict(zip(dict(mv_data.dims).keys(), [0]*len(mv_data.dims)))
 
+    #vertex, time, and the selected dimension will never be subspace selections,
+    #and should not be fixed to a single entry
     for key in ['vertex', 'time', dim]:
         keys.pop(key)
 
@@ -59,6 +62,8 @@ def bifurcation(dm: DataManager,
     #manually set any subspace selection parameters in the cfg;
     #for subspace selection: set value to 0 for access during data analysis
     for key in keys:
+        if key=='seed':
+            continue
         if mv_data.dims[key]>1:
             raise ValueError(f"Too many dimensions! Use 'subspace' to "
                              "select specific values for keys other than "
@@ -72,21 +77,21 @@ def bifurcation(dm: DataManager,
     hlpr.select_axis(0, 1)
 
     #data analysis .............................................................
+    #calculate the extreme points of the average opinion using find_extremes
+    #and append an array of the y-values with the corresponding sweep parameter
+    log.info("Starting data analysis ...")
     to_plot = []
     if 'seed' in mv_data.coords and len(dataset['seed'])>1:
         for i in range(len(dataset[dim])):
-            extremes = {'const': [], 'osc': []}
+            extremes = {'const': {'y': []}, 'osc': {'y': []}}
             for j in range(len(dataset['seed'])):
                 keys[dim] = i
                 keys['seed'] = j
                 data = np.asarray(dataset[keys])
-                means_glob = pd.Series(np.mean(data, axis=1)).rolling(window=5).mean()
+                means_glob = pd.Series(np.mean(data, axis=1)).rolling(window=2).mean()
                 res = find_extremes(means_glob)
                 for key in res.keys():
-                    extremes[key].append(res[key])
-            for key in extremes.keys():
-                #flatten
-                extremes[key] = [item for sublist in extremes[key] for item in sublist]
+                    extremes[key]['y'].extend(res[key]['y'])
             to_plot.append((dataset[dim][i].data, extremes))
     else:
         for i in range(len(dataset[dim])):
@@ -96,12 +101,16 @@ def bifurcation(dm: DataManager,
             extremes = find_extremes(means_glob)
             to_plot.append((dataset[dim][i].data, extremes))
 
+    log.info("Data analysis successful!")
     #plotting ..................................................................
+    #scatter plot of extrema sorted by second derivative=0 ('const') and first
+    #derivative != 0 ('osc')
     for p, o in to_plot:
-        hlpr.ax.scatter([p] * len(o['const']['y']), o['const']['y'],
-                        color='peru', s=5, alpha=.05)
         hlpr.ax.scatter([p] * len(o['osc']['y']), o['osc']['y'], color='navy',
                         s=5, alpha=0.05)
+        hlpr.ax.scatter([p] * len(o['const']['y']), o['const']['y'],
+                        color='peru', s=5, alpha=.05)
+
     hlpr.ax.set_ylim(0, 1)
     hlpr.ax.set_xlabel(convert_to_label(dim))
     hlpr.ax.set_ylabel(r'mean opinion $\bar{\sigma}$')

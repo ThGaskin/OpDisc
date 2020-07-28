@@ -40,6 +40,9 @@ def densities(dm: DataManager, *,
     time_steps = data['time'].size
 
     #data analysis and plotting.................................................
+    #calculate a histogram of the opinion distribution at each time step, and
+    #normalise each time step's histogram to 1 by dividing by the maximum count
+    #at that time step
     data_to_plot = np.zeros((time_steps, num_bins))
     for row in range(time_steps):
         counts_at_time, _ = np.histogram(data[row, :], range=val_range,

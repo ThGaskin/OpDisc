@@ -1,301 +1,251 @@
 #define BOOST_TEST_MODULE test init
 
 #include <boost/test/unit_test.hpp>
-
 #include <utopia/core/model.hh>
 
 #include "../modes.hh"
 #include "../OpDisc.hh"
-#include "../revision.hh"
 #include "../utils.hh"
 
 namespace Utopia::Models::OpDisc {
 
+// ------------------------- Type definitions ----------------------------------
+using Config = Utopia::DataIO::Config;
 using modes::Mode;
-using modes::Mode::conflict_dir;
-using modes::Mode::conflict_undir;
-using modes::Mode::isolated_1;
-using modes::Mode::isolated_2;
-using modes::Mode::reduced_int_prob;
-using modes::Mode::reduced_s;
-
-// -- Type definitions --------------------------------------------------------
 
 std::mt19937 rng{};
 std::uniform_real_distribution<double> uniform_prob_distr;
+Config config = YAML::LoadFile("test_config.yml")["test_init"];
 
-
-// -- Fixtures ----------------------------------------------------------------
-
-// Test random network
+// ----------------------------- Fixtures --------------------------------------
 struct TestNetwork {
-    using vertex = boost::graph_traits<Network>::vertex_descriptor;
-    using Config = Utopia::DataIO::Config;
-
     Config cfg;
     Network nw;
 
     TestNetwork()
     :
-    cfg(YAML::LoadFile("test_config.yml")),
+    cfg(config),
     nw{}
     {
-        const unsigned num_edges = 0;
-        const int num_vertices=get_as<int>("num_users", cfg);
-        constexpr bool allow_parallel = true;
-        constexpr bool allow_self_edges = false;
-
-        boost::generate_random_graph(nw,
-                                 num_vertices,
-                                 num_edges,
-                                 rng,
-                                 allow_parallel,
-                                 allow_self_edges);
+        const unsigned num_vertices = get_as<int>("num_users", cfg);
+        boost::generate_random_graph(nw, num_vertices, 0, rng, false, false);
     }
 };
 
-// -- Actual test -------------------------------------------------------------
+// --------------------------- Helper function ---------------------------------
+//Get the parameters from the cfg
+const double discriminators = get_as<double>("discriminators", config);
+const double homophily_parameter = get_as<double>("homophily_parameter", config);
+const unsigned life_expectancy = get_as<unsigned>("life_expectancy", config);
+const double susceptibility = get_as<double>("susceptibility", config);
+const double tolerance = get_as<double>("tolerance", config);
 
-BOOST_FIXTURE_TEST_CASE( test_init_Gauss_2_groups,
-                         TestNetwork,
-                         * boost::unit_test::tolerance(1e-12))
+std::vector<unsigned> num_groups
+    = get_as<std::vector<unsigned>>("num_groups", config);
+
+bool extremism = false;
+
+template <Mode model_mode, typename NWType>
+void initialize_model (NWType& nw, unsigned num_groups) {
+    /* Initialises the model with the values from config */
+    utils::initialize<model_mode>(nw,
+                                  discriminators,
+                                  extremism,
+                                  homophily_parameter,
+                                  life_expectancy,
+                                  num_groups,
+                                  susceptibility,
+                                  tolerance,
+                                  uniform_prob_distr,
+                                  rng);
+}
+
+// ---------------------------- Tests ------------------------------------------
+
+// -----------------------model_mode: ageing -----------------------------------
+BOOST_FIXTURE_TEST_CASE (test_general_and_ageing, TestNetwork,
+                         * boost::unit_test::tolerance(0.01)) {
 {
-    const int num_groups = 2;
+    // loop over group numbers and check model initialisation
+    for (unsigned n=0; n<num_groups.size(); ++n) {
 
-    // Test initialisation functions .........................................
-    {
-        unsigned int i = 0;
+        BOOST_TEST_CHECKPOINT("Test case: number of groups="<< num_groups[n]);
 
-        double op_avg=0.;
-        double op_avg_group_1=0;
-        double op_avg_group_2=0;
+        initialize_model<ageing>(nw, num_groups[n]);
 
-        std::vector<double> group_1;
-        std::vector<double> group_2;
-
-
+        //test opinion, susceptibility and tolerance initialisation
+        //test discriminators initialisation by default
+        BOOST_TEST_CHECKPOINT ("Testing general initialisation ...");
+        double avg_op = 0;
         for (auto v : range<IterateOver::vertices>(nw)) {
+            BOOST_TEST (nw[v].opinion>=0);
+            BOOST_TEST (nw[v].opinion<=1);
+            BOOST_TEST (nw[v].tolerance
+                     == tolerance
+                       );
+            BOOST_TEST (nw[v].susceptibility_1
+                     == susceptibility
+                       );
+            BOOST_TEST (nw[v].susceptibility_2
+                     == susceptibility*homophily_parameter
+                       );
+            BOOST_TEST (nw[v].discriminates
+                     == false
+                       );
+            avg_op+=nw[v].opinion;
+        }
+        avg_op/=boost::num_vertices(nw);
+        BOOST_TEST (avg_op == 0.5);
 
-            nw[v].tolerance=utils::tolerance_func(.6, .2);
-            BOOST_TEST(nw[v].tolerance == .196);
+        //test group initialisation in the ageing case
+        BOOST_TEST_CHECKPOINT ("Testing ageing-specific properties ...");
+        double avg_age = 0;
+        for (auto v : range<IterateOver::vertices>(nw)) {
+            BOOST_TEST (nw[v].group>=10);
+            BOOST_TEST (nw[v].group<=life_expectancy);
+            avg_age+=nw[v].group;
+        }
+        avg_age/=boost::num_vertices(nw);
+        BOOST_TEST (avg_age == (life_expectancy+10)/2.);
+    }
+}
+}
 
-            nw[v].tolerance=utils::tolerance_func(0, .05);
-            BOOST_TEST(nw[v].tolerance == .025);
+// -----------------------model_mode: conflict_dir -----------------------------
+BOOST_FIXTURE_TEST_CASE (test_conflict_dir, TestNetwork,
+                         * boost::unit_test::tolerance(0.01)) {
+{
+    // loop over group numbers and check model initialisation
+    for (unsigned n=0; n<num_groups.size(); ++n) {
 
-            nw[v].tolerance=utils::tolerance_func(0, .2);
-            BOOST_TEST(nw[v].tolerance == .1);
+        initialize_model<conflict_dir>(nw, num_groups[n]);
 
-            int q = num_groups;
-            if (num_groups>2){q-=1;}
-            nw[v].group=i%q;
-            ++i;
-            if (num_groups>2 and nw[v].group==0){
-                nw[v].group=(num_groups-1)*utils::rand_int(0, 1, rng);
+        // test initialisation of susceptibility_2
+        BOOST_TEST_CHECKPOINT ("Testing mode conflict_dir ...");
+        std::vector<unsigned> groups(num_groups[n], 0);
+        std::vector<double> group_op(num_groups[n], 0.);
+        for (auto v : range<IterateOver::vertices>(nw)) {
+            BOOST_TEST (nw[v].susceptibility_1
+                     == susceptibility
+                       );
+            BOOST_TEST (nw[v].susceptibility_2
+                     == susceptibility*homophily_parameter
+                       );
+            BOOST_TEST (nw[v].group>=0);
+            BOOST_TEST (nw[v].group<=num_groups[n]-1);
+            groups[nw[v].group]+=1;
+            group_op[nw[v].group]+=nw[v].opinion;
+        }
+
+        // check all group sizes are equal and group opinions are
+        // centered around 0.5
+        for (unsigned i=0; i<groups.size(); ++i) {
+            BOOST_TEST (1.*groups[i]
+                     == boost::num_vertices(nw)/num_groups[n],
+                        boost::test_tools::tolerance(0.025)
+                       );
+            double avg_op = group_op[i]/groups[i];
+            BOOST_TEST (avg_op
+                     == 0.5,
+                        boost::test_tools::tolerance(0.02)
+                       );
+        }
+    }
+}
+}
+
+// -----------------------model_mode: conflict_undir ---------------------------
+BOOST_FIXTURE_TEST_CASE (test_conflict_undir, TestNetwork,
+                         * boost::unit_test::tolerance(0.01)) {
+{
+    // loop over group numbers and check model initialisation
+    for (unsigned n=0; n<num_groups.size(); ++n) {
+
+        initialize_model<conflict_undir>(nw, num_groups[n]);
+
+        BOOST_TEST_CHECKPOINT ("Testing mode conflict_undir ...");
+
+        // check proportion of discriminators
+        double discriminator_prop = 0;
+        for (auto v : range<IterateOver::vertices>(nw)){
+            discriminator_prop+=nw[v].discriminates;
+        }
+        BOOST_TEST (discriminator_prop/boost::num_vertices(nw)
+                 == discriminators
+                   );
+      }
+}
+}
+
+// -----------------------model_mode: reduced_s --------------------------------
+BOOST_FIXTURE_TEST_CASE (test_reduced_s, TestNetwork,
+                         * boost::unit_test::tolerance(0.01)) {
+{
+    // loop over group numbers and check model initialisation
+    for (unsigned n=0; n<num_groups.size(); ++n) {
+
+        initialize_model<reduced_s>(nw, num_groups[n]);
+
+        BOOST_TEST_CHECKPOINT ("Testing mode reduced_s ...");
+
+        //collect group size and average opinion
+        std::vector<unsigned> groups(num_groups[n], 0);
+        std::vector<double> group_op(num_groups[n], 0.);
+        for (auto v : range<IterateOver::vertices>(nw)) {
+            BOOST_TEST (nw[v].group>=0);
+            BOOST_TEST (nw[v].group<=num_groups[n]-1);
+            groups[nw[v].group]+=1;
+            group_op[nw[v].group]+=nw[v].opinion;
+        }
+
+        //check groups are evenly distributed and check group sizes
+        for (unsigned i=1; i<groups.size()-1; ++i) {
+            BOOST_TEST (1.*groups[i]
+                     == boost::num_vertices(nw)/(num_groups[n]-1),
+                        boost::test_tools::tolerance(0.04)
+                       );
+            double avg_op = group_op[i]/groups[i];
+            if (num_groups[n]==1) {
+                BOOST_TEST (avg_op
+                         == 0.5,
+                            boost::test_tools::tolerance(0.02)
+                           );
             }
-
-            nw[v].opinion=utils::initialize_op<reduced_s>(num_groups, nw[v].group, rng);
-            op_avg+=nw[v].opinion;
-            BOOST_TEST(0<=nw[v].opinion);
-            BOOST_TEST(nw[v].opinion<=1);
-
-            BOOST_TEST(0<=nw[v].group);
-            BOOST_TEST(nw[v].group<=num_groups);
-            if(nw[v].group==0){
-              group_1.push_back(1);
-              op_avg_group_1+=nw[v].opinion;
-            }
-            else if(nw[v].group==1){
-              group_2.push_back(1);
-              op_avg_group_2+=nw[v].opinion;
+            else {
+              BOOST_TEST (avg_op
+                       == 1.*i/(num_groups[n]-1),
+                          boost::test_tools::tolerance(0.04)
+                         );
             }
 
         }
-        BOOST_TEST(group_1.size()==boost::num_vertices(nw)/num_groups);
-        BOOST_TEST(group_2.size()==boost::num_vertices(nw)/num_groups);
-        BOOST_TEST(op_avg/boost::num_vertices(nw)==0.5, boost::test_tools::tolerance(0.01));
-        BOOST_TEST(op_avg_group_1/group_1.size()<0.5);
-
+        BOOST_TEST (group_op[0]/groups[0]
+                 == 1.-group_op.back()/groups.back(),
+                    boost::test_tools::tolerance(0.04)
+                   );
+        BOOST_TEST (1.*groups[0]
+                 == 1.*groups.back(),
+                    boost::test_tools::tolerance(0.04)
+                   );
     }
 }
+}
 
-BOOST_FIXTURE_TEST_CASE( test_init_Gauss_5_groups,
-                         TestNetwork,
-                         * boost::unit_test::tolerance(1e-12))
+// ----------------------- extremism: true -------------------------------------
+BOOST_FIXTURE_TEST_CASE (test_extremism, TestNetwork) {
 {
-    const int num_groups = 5;
+    // loop over group numbers and check model initialisation
+    extremism = true;
 
-    // Test initialisation functions .........................................
-    {
-        unsigned int i = 0;
+    initialize_model<reduced_s>(nw, 2);
 
-        double op_avg=0.;
-        double op_avg_group_1=0;
-        double op_avg_group_2=0;
-        double op_avg_group_3=0;
-        double op_avg_group_4=0;
-        double op_avg_group_5=0;
-        std::vector<double> group_1;
-        std::vector<double> group_2;
-        std::vector<double> group_3;
-        std::vector<double> group_4;
-        std::vector<double> group_5;
+    BOOST_TEST_CHECKPOINT ("Testing model with extremism on ...");
 
-        for (auto v : range<IterateOver::vertices>(nw)) {
-
-            nw[v].tolerance=utils::tolerance_func(.5, .3);
-            BOOST_TEST(nw[v].tolerance == .3);
-
-            nw[v].tolerance=utils::tolerance_func(.1, .4);
-            BOOST_TEST(nw[v].tolerance == .272);
-
-            nw[v].tolerance=utils::tolerance_func(1, .1);
-            BOOST_TEST(nw[v].tolerance == .05);
-
-            int q = num_groups;
-            if (num_groups>2){q-=1;}
-            nw[v].group=i%q;
-            ++i;
-            if (num_groups>2 and nw[v].group==0){
-                nw[v].group=(num_groups-1)*utils::rand_int(0, 1, rng);
-            }
-
-            nw[v].opinion=utils::initialize_op<reduced_s>(num_groups, nw[v].group, rng);
-            op_avg+=nw[v].opinion;
-            BOOST_TEST(0<=nw[v].opinion);
-            BOOST_TEST(nw[v].opinion<=1);
-
-            BOOST_TEST(0<=nw[v].group);
-            BOOST_TEST(nw[v].group<num_groups);
-            if(nw[v].group==0){
-              group_1.push_back(1);
-              op_avg_group_1+=nw[v].opinion;
-            }
-            else if(nw[v].group==1){
-              group_2.push_back(1);
-              op_avg_group_2+=nw[v].opinion;
-            }
-            else if(nw[v].group==2){
-              group_3.push_back(1);
-              op_avg_group_3+=nw[v].opinion;
-            }
-            else if(nw[v].group==3){
-              group_4.push_back(1);
-              op_avg_group_4+=nw[v].opinion;
-            }
-            else if(nw[v].group==4){
-              group_5.push_back(1);
-              op_avg_group_5+=nw[v].opinion;
-            }
-
+    for (auto v : range<IterateOver::vertices>(nw)) {
+            BOOST_TEST (nw[v].tolerance
+                     == utils::tolerance_func(nw[v].opinion, tolerance));
         }
-        BOOST_TEST(group_1.size()+group_5.size()==boost::num_vertices(nw)/(num_groups-1));
-        BOOST_TEST(group_2.size()<=boost::num_vertices(nw)/(num_groups-1));
-        BOOST_TEST(group_3.size()<=boost::num_vertices(nw)/(num_groups-1));
-        BOOST_TEST(group_4.size()<=boost::num_vertices(nw)/(num_groups-1));
-
-        BOOST_TEST(op_avg/boost::num_vertices(nw)==0.5, boost::test_tools::tolerance(0.01));
-        BOOST_TEST(op_avg_group_1/group_1.size()<op_avg_group_2/group_2.size());
-        BOOST_TEST(op_avg_group_2/group_2.size()==1./(num_groups-1), boost::test_tools::tolerance(0.05));
-        BOOST_TEST(op_avg_group_3/group_3.size()==2./(num_groups-1), boost::test_tools::tolerance(0.05));
-        BOOST_TEST(op_avg_group_4/group_4.size()==3./(num_groups-1), boost::test_tools::tolerance(0.05));
-        BOOST_TEST(op_avg_group_5/group_5.size()>op_avg_group_4/group_4.size());
-    }
+}
 }
 
-
-BOOST_FIXTURE_TEST_CASE( test_init_unif,
-                         TestNetwork,
-                         * boost::unit_test::tolerance(1e-12))
-{
-    const int num_groups = 6;
-
-    // Test initialisation functions .........................................
-    {
-        unsigned int i = 0;
-
-        double op_avg=0.;
-        double op_avg_group_1=0;
-        double op_avg_group_2=0;
-        double op_avg_group_3=0;
-        double op_avg_group_4=0;
-        double op_avg_group_5=0;
-        double op_avg_group_6=0;
-
-        std::vector<double> group_1;
-        std::vector<double> group_2;
-        std::vector<double> group_3;
-        std::vector<double> group_4;
-        std::vector<double> group_5;
-        std::vector<double> group_6;
-
-        for (auto v : range<IterateOver::vertices>(nw)) {
-
-            nw[v].tolerance=utils::tolerance_func(.5, .3);
-            BOOST_TEST(nw[v].tolerance == .3);
-
-            nw[v].tolerance=utils::tolerance_func(.1, .4);
-            BOOST_TEST(nw[v].tolerance == .272);
-
-            nw[v].tolerance=utils::tolerance_func(1, .1);
-            BOOST_TEST(nw[v].tolerance == .05);
-
-            int q = num_groups;
-            if (num_groups>2){q-=1;}
-            nw[v].group=i%q;
-            ++i;
-            if (num_groups>2 and nw[v].group==0){
-                nw[v].group=(num_groups-1)*utils::rand_int(0, 1, rng);
-            }
-
-            nw[v].opinion=utils::initialize_op<conflict_dir>(num_groups, nw[v].group, rng);
-            op_avg+=nw[v].opinion;
-            BOOST_TEST(0<=nw[v].opinion);
-            BOOST_TEST(nw[v].opinion<=1);
-
-            BOOST_TEST(0<=nw[v].group);
-            BOOST_TEST(nw[v].group<=num_groups);
-            if(nw[v].group==0){
-              group_1.push_back(1);
-              op_avg_group_1+=nw[v].opinion;
-            }
-            else if(nw[v].group==1){
-              group_2.push_back(1);
-              op_avg_group_2+=nw[v].opinion;
-            }
-            else if(nw[v].group==2){
-              group_3.push_back(1);
-              op_avg_group_3+=nw[v].opinion;
-            }
-            else if(nw[v].group==3){
-              group_4.push_back(1);
-              op_avg_group_4+=nw[v].opinion;
-            }
-            else if(nw[v].group==4){
-              group_5.push_back(1);
-              op_avg_group_5+=nw[v].opinion;
-            }
-            else if(nw[v].group==5){
-              group_6.push_back(1);
-              op_avg_group_6+=nw[v].opinion;
-            }
-
-        }
-        BOOST_TEST(group_1.size()+group_6.size()==boost::num_vertices(nw)/(num_groups-1));
-        BOOST_TEST(group_2.size()==boost::num_vertices(nw)/(num_groups-1));
-        BOOST_TEST(group_3.size()==boost::num_vertices(nw)/(num_groups-1));
-        BOOST_TEST(group_4.size()==boost::num_vertices(nw)/(num_groups-1));
-        BOOST_TEST(group_5.size()==boost::num_vertices(nw)/(num_groups-1));
-
-        BOOST_TEST(op_avg/boost::num_vertices(nw)==0.5, boost::test_tools::tolerance(0.01));
-        BOOST_TEST(op_avg_group_1/group_1.size()==0.5, boost::test_tools::tolerance(0.05));
-        BOOST_TEST(op_avg_group_2/group_2.size()==0.5, boost::test_tools::tolerance(0.05));
-        BOOST_TEST(op_avg_group_3/group_3.size()==0.5, boost::test_tools::tolerance(0.05));
-        BOOST_TEST(op_avg_group_4/group_4.size()==0.5, boost::test_tools::tolerance(0.05));
-        BOOST_TEST(op_avg_group_5/group_5.size()==0.5, boost::test_tools::tolerance(0.05));
-        BOOST_TEST(op_avg_group_6/group_6.size()==0.5, boost::test_tools::tolerance(0.05));
-
-    }
-}
-
-
-} // namespace Utopia::Models::OpDisc
+} //namespace

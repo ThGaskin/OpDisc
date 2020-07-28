@@ -2,9 +2,9 @@
 ---
 bifurcation:
     creator: multiverse
+    expected_multiverse_ndim: [1,2,3,4,5]
     module: model_plots.OpDisc
     plot_func: bifurcation
-    dim: homophily_parameter
 
 densities:
     creator: universe
@@ -30,6 +30,7 @@ group_avgs:
 
 group_avg_anim:
     creator: multiverse
+    expected_multiverse_ndim: [1,2,3,4,5]
     module: model_plots.OpDisc
     plot_func: group_avg_anim
     helpers:
@@ -54,13 +55,6 @@ group_avg_anim:
         stepsize: 1
       writer: ffmpeg
     file_ext: mp4
-
-opinion:
-    creator: universe
-    universes: all
-    module: model_plots.OpDisc
-    plot_func: opinion
-    age_groups: [10, 20, 40, 60, 80]
 
 opinion_animation:
     creator: universe
@@ -116,11 +110,6 @@ opinion_groups:
         stepsize: 10
       writer: ffmpeg
     file_ext: mp4
-
-sweep:
-    creator: multiverse
-    module: model_plots.OpDisc
-    plot_func: sweep
 
 #-------------------------------------------------------------------------------
 #color cyclers

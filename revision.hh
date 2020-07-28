@@ -7,12 +7,6 @@
 namespace Utopia::Models::OpDisc::revision {
 
 using modes::Mode;
-using modes::Mode::conflict_dir;
-using modes::Mode::conflict_undir;
-using modes::Mode::isolated_1;
-using modes::Mode::isolated_2;
-using modes::Mode::reduced_int_prob;
-using modes::Mode::reduced_s;
 
 template<Mode model_mode, typename NWType, typename RNGType>
 void user_revision( NWType& nw,
@@ -38,7 +32,7 @@ void user_revision( NWType& nw,
 
     // Directed conflict interaction: lower group numbers universally reject higher groups'
     // opinions, higher group numbers universally discriminate against lower groups' opinions
-    if constexpr (model_mode==conflict_dir) {
+    else if constexpr (model_mode==Mode::conflict_dir) {
         if (nw[v].group<nw[nb].group) {
             utils::reject_opinion(v, nw[nb].opinion, nw);
             utils::update_opinion_disc(nb, op_v, nw);
@@ -49,7 +43,7 @@ void user_revision( NWType& nw,
         }
     }
 
-    else if constexpr (model_mode==conflict_undir) {
+    else if constexpr (model_mode==Mode::conflict_undir) {
         if (nw[v].discriminates){
             utils::reject_opinion(v, nw[nb].opinion, nw);
         }
@@ -64,7 +58,7 @@ void user_revision( NWType& nw,
         }
     }
 
-    else if constexpr (model_mode==isolated_1) {
+    else if constexpr (model_mode==Mode::isolated_1) {
         if (not nw[v].discriminates) {
             utils::update_opinion(v, nw[nb].opinion, nw);
         }
@@ -73,14 +67,14 @@ void user_revision( NWType& nw,
         }
     }
 
-    else if constexpr (model_mode==isolated_2) {
+    else if constexpr (model_mode==Mode::isolated_2) {
         if (not nw[v].discriminates and not nw[nb].discriminates) {
             utils::update_opinion(v, nw[nb].opinion, nw);
             utils::update_opinion(nb, op_v, nw);
         }
     }
 
-    else if constexpr (model_mode==reduced_int_prob) {
+    else if constexpr (model_mode==Mode::reduced_int_prob) {
         const double interaction_prob=prob_distr(rng);
         if (interaction_prob<=homophily_param){
             while(nw[v].group!=nw[nb].group or nb==v) {
@@ -89,9 +83,10 @@ void user_revision( NWType& nw,
         }
         utils::update_opinion(v, nw[nb].opinion, nw);
         utils::update_opinion(nb, op_v, nw);
+
     }
 
-    else if constexpr (model_mode==reduced_s) {
+    else if constexpr (model_mode==Mode::reduced_s) {
         utils::update_opinion_disc(v, nw[nb].opinion, nw);
         utils::update_opinion_disc(nb, op_v, nw);
     }

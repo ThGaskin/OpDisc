@@ -1,3 +1,51 @@
-#Test config file
-num_users: 5000
-mode: reduced_int_prob
+#Test config file for OpDisc unit tests
+---
+#.. utility function tests .....................................................
+test_utils:
+
+  params:
+    num_users: 1000
+    susceptibility: 0.5
+    tolerance: 1.
+    homophily_parameter: 0.5
+
+  test_funcs:
+    test_tolerance_func:
+      opinion: 0.2
+      tolerances: [0, 0.1, 0.2, 0.3, 0.5, 1]
+      to_assert: [0.0, 0.082, 0.164, 0.246, 0.41, 0.82]
+
+    test_reject_op:
+      opinions: [0, 0.1, 0.2, 0.3, 0.7, 1]
+      nb_opinions: [0, 0.5, 1]
+      to_assert:
+        - [0.0, 0.55, 0.60, 0.65, 0.85, 1.0]
+        - [0.0, 0.07777777777777778, 0.1625, 0.2571428571428571, 0.7428571428571428, 1.0]
+        - [0.0, 0.05, 0.1, 0.15, 0.35, 1.0]
+
+    test_update_op:
+      opinions: [0.3, 0.5, 0.9]
+      nb_opinions: [0.2, 0.4]
+      to_assert:
+        - [0.25, 0.35, 0.55]
+        - [0.35, 0.45, 0.65]
+
+    test_update_op_disc:
+      opinions: [0.1, 0.7, 0.9]
+      nb_opinions: [0.3, 0.5]
+      to_assert:
+        - [0.15, 0.6, 0.75]
+        - [0.2, 0.65, 0.8]
+
+#.. initialisation function tests ...............................................
+test_init:
+    num_users: 100000
+    num_groups: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    susceptibility: 0.6
+    tolerance: 0.3
+    homophily_parameter: 0.5
+    discriminators: 0.3
+    life_expectancy: 100
+
+test_ageing:
+    time_scales: [0.01, 0.5, 1., 2, 10]

@@ -1,6 +1,8 @@
 #ifndef UTOPIA_MODELS_OPDISC_UTILS
 #define UTOPIA_MODELS_OPDISC_UTILS
 
+#include <utopia/core/graph.hh>
+
 #include "modes.hh"
 
 namespace Utopia::Models::OpDisc::utils{
@@ -11,8 +13,6 @@ using modes::Mode::conflict_dir;
 using modes::Mode::conflict_undir;
 using modes::Mode::isolated_1;
 using modes::Mode::isolated_2;
-using modes::Mode::reduced_int_prob;
-using modes::Mode::reduced_s;
 
 // RANDOM DISTRIBUTION UTILITY FUNCTIONS .......................................
 template<typename RNGType>
@@ -50,13 +50,16 @@ double set_init_Gauss( std::pair<double, double> distr_vals, RNGType& rng ) {
 }
 
 template <Mode model_mode, typename RNGType>
-double initialize_op( const int num_groups, const int group, RNGType& rng ) {
+double initialize_op( const int num_groups, const double group, RNGType& rng ) {
     /** Returns either a normally distributed value around the mean of the group,
       * or a random double in [0, 1]
       */
-    if constexpr (model_mode==conflict_dir or model_mode==conflict_undir
-                  or model_mode==ageing) {
+    if constexpr (model_mode==Mode::conflict_dir or model_mode==Mode::conflict_undir
+                  or model_mode==Mode::ageing) {
         return rand_double(0, 1, rng);
+    }
+    else if (num_groups==1) {
+       return rand_double(0, 1, rng);
     }
     else {
         double mean = group * 1./(num_groups-1);
@@ -71,6 +74,65 @@ double tolerance_func( const double opinion, const double tolerance_param) {
     opinions will have a reduced tolerance. */
     return tolerance_param*(1-(2*pow((opinion-0.5),2)));
     //return tolerance_param*(2*pow((opinion-0.5), 2)+0.5);
+}
+template <Mode model_mode, typename NWType, typename RNGType>
+void initialize ( NWType & nw,
+                  const double discriminators,
+                  const bool extremism,
+                  const double homophily_parameter,
+                  const unsigned life_expectancy,
+                  const unsigned num_groups,
+                  const double susceptibility,
+                  const double tolerance,
+                  std::uniform_real_distribution<double> prob_distr,
+                  RNGType rng)
+{
+    /** Initialises the user attributes. */
+    unsigned i = 0;
+    unsigned j = 0;
+    for (auto v : range<IterateOver::vertices>(nw)) {
+        if constexpr (model_mode==ageing) {
+            //assign random age from 10 to the life expectancy
+            nw[v].group = rand_double(10, life_expectancy, rng);
+        }
+        else if constexpr (model_mode==conflict_dir or model_mode==conflict_undir) {
+            nw[v].group = rand_int(0, num_groups-1, rng);
+        }
+        else {
+            //distribute members equally among groups
+            //(groups at edges only have half as many users)
+            int q = num_groups;
+            if (q>2) { q-=1; }
+            nw[v].group = i%q;
+            ++i;
+            if (num_groups>2 and nw[v].group==0) {
+                nw[v].group = q*(j%2);
+                ++j;
+            }
+        }
+        nw[v].opinion = initialize_op<model_mode>(num_groups, nw[v].group, rng);
+        if (extremism) {
+            nw[v].tolerance = tolerance_func(nw[v].opinion, tolerance);
+        }
+        else {
+            nw[v].tolerance = tolerance;
+        }
+        nw[v].susceptibility_1 = susceptibility;
+        nw[v].susceptibility_2 = susceptibility*(1-homophily_parameter);
+        nw[v].discriminates = false;
+        if constexpr (model_mode==isolated_1 or model_mode==isolated_2) {
+            double p = prob_distr(rng);
+            if (p<homophily_parameter) {
+                nw[v].discriminates = true;
+            }
+        }
+        else if constexpr (model_mode==conflict_undir) {
+            double p = prob_distr(rng);
+            if (p<discriminators) {
+                nw[v].discriminates = true;
+            }
+        }
+    } //for-loop
 }
 
 // UPDATE FUNCTIONS ............................................................

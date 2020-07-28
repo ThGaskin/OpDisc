@@ -26,7 +26,7 @@ against members of other groups, holds and opinion, has a certain tolerance, and
 is susceptible to other opinions. The discrimination may for some modes take the
 form of reduced susceptibility to opinions from other groups (susceptibility_2)*/
 struct User {
-    int group;
+    double group;
     bool discriminates;
     double opinion;
     double tolerance;
@@ -75,11 +75,12 @@ private:
     const double _discriminators;
     const bool _extremism;
     const double _homophily_parameter;
-    const unsigned int _life_expectancy;
-    const unsigned int _number_of_groups;
-    const unsigned int _peer_radius;
-    const double _tolerance;
+    const double _life_expectancy;
+    const unsigned _number_of_groups;
+    const double _peer_radius;
     const double _susceptibility;
+    const double _time_scale;
+    const double _tolerance;
 
     // datasets and groups
     std::shared_ptr<DataGroup> _grp_nw;
@@ -105,11 +106,12 @@ public:
         _discriminators(get_as<double>("discriminators", this->_cfg)),
         _extremism(get_as<bool>("extremism", this->_cfg)),
         _homophily_parameter(get_as<double>("homophily_parameter", this->_cfg)),
-        _life_expectancy(get_as<int>("life_expectancy", this->_cfg["ageing"])),
+        _life_expectancy(get_as<double>("life_expectancy", this->_cfg["ageing"])),
         _number_of_groups(get_as<int>("number_of_groups", this->_cfg)),
-        _peer_radius(get_as<int>("peer_radius", this->_cfg["ageing"])),
-        _tolerance(get_as<double>("tolerance", this->_cfg)),
+        _peer_radius(get_as<double>("peer_radius", this->_cfg["ageing"])),
         _susceptibility(get_as<double>("susceptibility", this->_cfg)),
+        _time_scale(get_as<double>("time_scale", this->_cfg["ageing"])),
+        _tolerance(get_as<double>("tolerance", this->_cfg)),
         // create datagroups and datasets
         _grp_nw(Utopia::DataIO::create_graph_group(_nw, this->_hdfgrp, "nw")),
         _dset_discriminators(this->create_dset("discriminators", _grp_nw,
@@ -130,69 +132,32 @@ public:
                          num_vertices(_nw), num_edges(_nw));
 
         // Write the vertex data once as it does not change
-        _dset_opinion->add_attribute("is_vertex_property", true);
         _dset_opinion->add_attribute("dim_name__1", "vertex");
-        _dset_opinion->add_attribute("coords_mode__vertex", "start_and_step");
-        _dset_opinion->add_attribute("coords__vertex", std::vector<std::size_t>{0, 1});
+        _dset_opinion->add_attribute("coords_mode__vertex", "trivial");
 
-        _dset_discriminators->add_attribute("is_vertex_property", true);
         _dset_discriminators->add_attribute("dim_name__1", "vertex");
-        _dset_discriminators->add_attribute("coords_mode__vertex", "start_and_step");
-        _dset_discriminators->add_attribute("coords__vertex", std::vector<std::size_t>{0, 1});
+        _dset_discriminators->add_attribute("coords_mode__vertex", "trivial");
 
-        _dset_group_label->add_attribute("is_vertex_property", true);
         _dset_group_label->add_attribute("dim_name__1", "vertex");
-        _dset_group_label->add_attribute("coords_mode__vertex", "start_and_step");
-        _dset_group_label->add_attribute("coords__vertex", std::vector<std::size_t>{0, 1});
+        _dset_group_label->add_attribute("coords_mode__vertex", "trivial");
     }
 
-private:
+public:
 
     // Setup functions .........................................................
     void initialize_properties() {
+        this->_log->info("time scale: {}", _time_scale);
         this->_log->debug("Initializing user properties ...");
-        unsigned int i = 0;
-        for (auto v : range<IterateOver::vertices>(_nw)) {
-            if constexpr (model_mode==ageing) {
-                //assign random age from 10 to the life expectancy
-                _nw[v].group = utils::rand_int<RNG>(10, _life_expectancy, *this->_rng);
-            }
-            else {
-                //distribute members equally among groups
-                //(groups at edges only have half as many users)
-                int q = _number_of_groups;
-                if (_number_of_groups>2){q-=1;}
-                _nw[v].group = i%q;
-                ++i;
-                if (_number_of_groups>2 and _nw[v].group==0){
-                    _nw[v].group = (_number_of_groups-1)*utils::rand_int(0, 1, *this->_rng);
-                }
-            }
-            _nw[v].opinion = utils::initialize_op<model_mode>(_number_of_groups,
-                                                              _nw[v].group,
-                                                              *this->_rng);
-            if (_extremism) {
-                _nw[v].tolerance = utils::tolerance_func(_nw[v].opinion, _tolerance);
-            }
-            else {
-                _nw[v].tolerance = _tolerance;
-            }
-            _nw[v].susceptibility_1 = _susceptibility;
-            _nw[v].susceptibility_2 = _susceptibility*(1-_homophily_parameter);
-            _nw[v].discriminates = false;
-            if constexpr (model_mode==isolated_1 or model_mode==isolated_2) {
-                double p = _uniform_distr_prob_val(*this->_rng);
-                if (p<_homophily_parameter) {
-                    _nw[v].discriminates = true;
-                }
-            }
-            else if constexpr (model_mode==conflict_undir) {
-                double p = _uniform_distr_prob_val(*this->_rng);
-                if (p<_discriminators) {
-                    _nw[v].discriminates = true;
-                }
-            }
-        } //for-loop
+        utils::initialize<model_mode>(_nw,
+                                      _discriminators,
+                                      _extremism,
+                                      _homophily_parameter,
+                                      _life_expectancy,
+                                      _number_of_groups,
+                                      _susceptibility,
+                                      _tolerance,
+                                      _uniform_distr_prob_val,
+                                      *this->_rng);
     } //initialize_properties
     Network init_nw() {
         this->_log->debug("Creating and initializing the user network ...");
@@ -208,6 +173,7 @@ public:
                                   _extremism,
                                   _life_expectancy,
                                   _peer_radius,
+                                  _time_scale,
                                   _tolerance,
                                   *this->_rng);
         }
@@ -232,12 +198,12 @@ public:
                              });
         if constexpr (model_mode==ageing) {
           _dset_group_label->write(v, v_end, [this](auto vd) {
-                                       return (int)_nw[vd].group;
+                                       return (float)_nw[vd].group;
                                    });
         }
         else if (this->get_time() + this->get_write_every() > this->get_time_max()) {
               _dset_discriminators->write(v, v_end, [this](auto vd) {
-                                              return (unsigned int) _nw[vd].discriminates;
+                                              return (unsigned) _nw[vd].discriminates;
                                           });
               _dset_group_label->write(v, v_end, [this](auto vd) {
                                            return (int) _nw[vd].group;

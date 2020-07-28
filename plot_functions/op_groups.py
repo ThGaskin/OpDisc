@@ -61,14 +61,18 @@ def op_groups(dm: DataManager, *,
     time_steps = opinions.coords['time'].size
 
     #data analysis .............................................................
+    #get opinions by group
     to_plot = np.zeros((time_steps, num_bins, num_groups))
     data_by_groups = data_by_group(opinions, groups, group_list, val_range,
                                    num_bins, ageing=ageing)
+    #calculate a histogram of the opinion distribution at each time step
     for t in range(time_steps):
         for k in range(num_groups):
             counts, _ = np.histogram(data_by_groups[k][t], bins=num_bins,
                                      range=val_range)
             to_plot[t, :, k] = counts[:]
+
+    #get pretty labels
     if ageing:
         labels = [f"Ages {group_list[_]}-{group_list[_+1]}" for _ in range(num_groups)]
         max_age = np.amax(groups)
@@ -76,12 +80,18 @@ def op_groups(dm: DataManager, *,
             labels[-1]=f"Ages {group_list[-2]}+"
     else:
         labels = [f"Group {_+1}" for _ in group_list]
+
+    #create pandas df for stacked bar plot
     if not time_idx:
         X = [pd.DataFrame(to_plot[_, :, :], columns=labels) for _ in range(time_steps)]
     else:
         X = pd.DataFrame(to_plot[time_idx, :, :], columns=labels)
 
     #plotting ..................................................................
+    #plot an animated stacked bar chart. Since there is no 'set height' function
+    #for pandas charts, we need to clear the axis and entirely reformat the plot
+    #for every frame. Clearing is necessary or else successive frames are simply
+    #superimposed
     def update_data(stepsize: int=1):
         """Updates the data of the imshow objects"""
         if time_idx:
