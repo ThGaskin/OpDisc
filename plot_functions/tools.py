@@ -1,12 +1,10 @@
-"""Formatting and general utility functions for the OpDyn plots.
-"""
+"""Formatting and general utility functions for the OpDisc plots."""
 import logging
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-from matplotlib import rc
 from typing import Tuple
+from matplotlib import rc
 
 log = logging.getLogger(__name__)
 
@@ -26,23 +24,42 @@ model_modes = {
 }
 
 parameters = {
-    'discriminators': r'Discriminator fraction $p_d$',
+    'absolute_area': r'$\vert A^{+} \vert + \vert A^{-} \vert$',
+    'area': r'$\vert A \vert $',
+    'area_comp': r'$A$',
+    'area_diff': r'$\vert A \vert - A$',
+    'avg_of_means_diff_to_05': r'$\langle \vert \bar{\sigma}-0.5 \vert \rangle$',
+    'avg_of_stddevs': r'$\langle \mathrm{var}(\bar{\sigma}) \rangle$',
+    'discriminators': r'$p_d$',
     'homophily_parameter': r'$p_\mathrm{hom}$',
     'life_expectancy': 'Life expectancy',
-    'number_of_groups': 'Number of groups',
+    'mean_degree': r'$\bar{k}$',
+    'means': r'$\langle \vert \bar{\sigma}-0.5 \vert \rangle$',
+    'number_of_groups': 'N',
     'peer_radius': 'Peer radius',
-    'susceptibility': r'Susceptibility $\mu$',
-    'tolerance': r'Tolerance $\epsilon$'
+    'stddevs': r'$\langle \mathrm{var}(\bar{\sigma}) \rangle$',
+    'susceptibility': r'$\mu$',
+    'time_scale': r'time scale',
+    'tolerance': r'$\epsilon$'
 }
 
 titles = {
+    'absolute_area': r'\bf Absolute area under means curve',
+    'area': r'\bf Area under means curve',
+    'area_comp': r'\bf Comparison of areas under means curve',
+    'area_diff': r'\bf Difference of areas under means curve',
+    'avg_of_means_diff_to_05': r'\bf Average of difference of means to 0.5',
+    'avg_of_stddevs': r'\bf Average of standard deviations',
     'bifurcation': r'\bf Bifurcation diagramme',
     'densities' : r'\bf Opinion clusters over time',
+    'extreme_means_diff': r'\bf Difference of means of groups 1 and N',
     'group_avg': r'\bf Average opinion by group',
     'group_avgs_anim': r'\bf Average opinion by group',
-    'opinion': r'\bf Opinion distribution',
+    'means': r'\bf Distribution means over time',
+    'opinion': r'\bf Opinion distribution at single time step',
     'opinion_anim': r'\bf Opinion distribution over time',
-    'op_groups' : r'\bf Opinion evolution by group'
+    'op_groups' : r'\bf Opinion evolution by group',
+    'stddevs': r'\bf Distribution variances over time',
 }
 
 def convert_to_label(input) -> str:
@@ -61,7 +78,7 @@ def mode(input) -> str:
         log.warn(f"unrecognised model mode {input}!")
         return 'unrecognised mode'
 
-def title_box(ax, cfg, *, plot_name: str, title: str=None, dim: str=None):
+def title_box(ax, cfg, *, plot_name: str, title: str=None, dim1: str=None, dim2: str=None):
     """Returns a uniformly formatted title box
 
     Arguments:
@@ -76,7 +93,12 @@ def title_box(ax, cfg, *, plot_name: str, title: str=None, dim: str=None):
             'num_steps': f"{cfg['num_steps']}"}
     for key in cfg['OpDisc'].keys():
         if key=='nw': continue
-        info[key] = cfg['OpDisc'][key] if dim!=key else 'sweep'
+        elif key=='ageing':
+            info['ageing']={}
+            for k in cfg['OpDisc'][key].keys():
+                info['ageing'][k] = cfg['OpDisc']['ageing'][k] if k not in [dim1, dim2] else 'sweep'
+        else:
+            info[key] = cfg['OpDisc'][key] if key not in [dim1, dim2] else 'sweep'
     #title
     t = r'\bf {}'.format(title) if title else titles[plot_name]
     #subtitle
@@ -85,9 +107,10 @@ def title_box(ax, cfg, *, plot_name: str, title: str=None, dim: str=None):
     if info['mode']=='ageing':
         sst = (f"{info['num_users']} users, " +
                f"life expectancy: {info['ageing']['life_expectancy']}, " +
+               f"time scale: {info['ageing']['time_scale']}, "+
                f"peer radius: {info['ageing']['peer_radius']} \n")
     else:
-        sst = f"{info['num_users']} users, {info['number_of_groups']} groups \n"
+        sst = f"{info['num_users']} users, number of groups: {info['number_of_groups']} \n"
     sst += (f"Numerical steps: {info['num_steps']} \n" +
             f"Susceptibility: {info['susceptibility']}, " +
             f"homophily parameter: {info['homophily_parameter']} \n" +
@@ -100,7 +123,7 @@ def title_box(ax, cfg, *, plot_name: str, title: str=None, dim: str=None):
     ax.text(0, 1., st, fontsize=14, verticalalignment='top', horizontalalignment='left')
     ax.text(0, 0.0, sst, fontsize=10)
 
-def setup_figure(cfg, *, plot_name: str, title: str=None, dim: str=None,
+def setup_figure(cfg, *, plot_name: str, title: str=None, dim1: str=None, dim2: str=None,
                  figsize: tuple=(8, 10), ncols: int=1, nrows: int=2,
                  height_ratios: list=[1, 6], width_ratios: list=[1],
                  gridspec: list=[(0, 0), (1, 0)]):
@@ -120,44 +143,35 @@ def setup_figure(cfg, *, plot_name: str, title: str=None, dim: str=None,
     """
     figure = plt.figure(figsize=figsize)
     gs = figure.add_gridspec(ncols=ncols, nrows=nrows, height_ratios=height_ratios, width_ratios=width_ratios, hspace=0.2)
+    #gs.update(left=0.,right=1,top=1,bottom=0.0,wspace=0.3,hspace=0.09)
     axs = []
     for item in gridspec:
         axs.append([figure.add_subplot(gs[item])])
-    title_box(axs[0][0], cfg, plot_name=plot_name, title=title, dim=dim)
+    title_box(axs[0][0], cfg, plot_name=plot_name, title=title, dim1=dim1, dim2=dim2)
 
     return figure, axs
 
 #utility functions .............................................................
-def R_p_factors(r, n) -> Tuple[float, float]:
-    """Calculates the R_p prefactors for the various discrimination models.
-
-    Arguments:
-        r: number of vertices
-        n: number of groups
-
-    Returns:
-        P: the interaction probability for the 'reduced interaction probability'
-            mode
-        Q: the interaction probability for the 'isolated discrimination' and
-            'reduced susceptibility' modes
-    """
-    P = 1./((n-1)*(r-1))*((r/(2*(n-1))-1.)+((n-2)*(r/(n-1)-1.)))
-    Q = 0.5*(1+2*(n-2))/(1.-1/(2*(n-1))+n-2-(n-2)/(n-1))
-
-    return P, Q
-
-def R_p(p_hom, n, P, Q, mode) -> list:
+def R_p(p_hom, n, mode, *, P: float=1., Q: float=1.) -> list:
     """Calculates the R_p values for a given list of homophily parameters.
 
     Arguments:
         p_hom (list): the list of homophily parameters
         n (int): the number of groups
-        P (double): the P-factor
-        Q (double): the Q-factor
+        P (float, optional): the P-factor
+        Q (float, optional): the Q-factor
         mode (str): the model mode
+
+    Raises:
+        Warning: if a mode is passed for which the R_p factors cannot be calculated
+
+    Returns:
+        R_p (list): list of R_p factors
     """
+    if isinstance(p_hom, float) and p_hom==1:
+        return np.inf
     if mode=="reduced_int_prob":
-        return (P/(1-P)+p_hom)/(1.-p_hom)
+        return (P/(n-1)+p_hom)/(1.-p_hom)
     elif mode=="isolated_1" or mode=="reduced_s":
         return Q/((n-1)*(1-p_hom))
     elif mode=="isolated_2":
@@ -166,136 +180,93 @@ def R_p(p_hom, n, P, Q, mode) -> list:
         log.warn(f"R_p factors not applicable to mode {mode}!")
         return [-1]*len(p_hom)
 
-def find_extremes(data, *, x=None) -> dict:
-    """Returns a list of extrema of first ('osc') and second ('const') order.
-    If an array of x values is passed, the x-coordinates of the extrema are also
-    added.
+def deduce_sweep_dimension(data, *, key_to_ignore: str='seed') -> str:
+    """Tries to automatically deduce the sweep dimension if no dim argument
+    is passed.
 
     Arguments:
-        data
-        x (array, optional): x values
-    """
-
-    def find_root(i: int) -> float:
-        """Estimates the zero between two passed function values with different
-        signs by linear interpolation
-        """
-        x_1 = x[i+2]
-        x_2 = x[i+3]
-        y_1 = df[i]
-        y_2 = df[i+1]
-        return x_1 - y_1*(x_2-x_1)/(y_2-y_1) if y_2!=y_1 else 0.5*(x_2-x_1)
-
-    res = {'const': {'x': [], 'y': []}, 'osc': {'x': [], 'y': []}}
-    df = 0.5*(np.diff(data)[1:]+np.diff(data)[:-1]) #first derivative
-    ddf = 0.5*(np.diff(df)[1:]+np.diff(df)[:-1]) #second derivative
-    #df and ddf must have same length. they are shifted up by two wrt the data
-    #array.
-    df = df[1:-1]
-
-    prev = -1
-    for i in range(len(df)-1):
-        if np.isnan(df[i]):
-            #depending on the rolling averaging window, the first few
-            #entries of data will be nans; skip them automatically
-            continue
-        if (abs(df[i])<1e-5) or np.sign(df[i])!= np.sign(df[i+1]):
-            y_0 = (np.maximum(data[i+2], data[i+3]) if df[i]>0
-                   else np.minimum(data[i+2], data[i+3]))
-            #found local extremum: append x and y values
-            if x is not None:
-                x_0 = find_root(i)
-            if ((res['const']['y']!=[] and abs(res['const']['y'][-1]-y_0)<0.01) or
-                (res['osc']['y']!=[] and abs(res['osc']['y'][-1]-y_0)<0.01) or
-                (ddf[i]==0 or np.sign(ddf[i])!=np.sign(ddf[i+1]))):
-                #if second derivative is zero: constant value
-                #if deviation from previous value small: random fluctuation
-                #around constant value
-                res['const']['y'].append(y_0)
-                if x is not None:
-                    res['const']['x'].append(x_0)
-                prev = 0
-            else:
-                #if the previous entry was constant but the current entry an
-                #oscillation, re-classify the last extremum as an oscillation also
-                if prev==0:
-                    res['osc']['y'].append(res['const']['y'].pop())
-                    if x is not None:
-                        res['osc']['x'].append(res['const']['x'].pop())
-                res['osc']['y'].append(y_0)
-                if x is not None:
-                    res['osc']['x'].append(x_0)
-                prev = 1
-
-    return res
-
-def data_by_group(data, groups, group_list, val_range: tuple=(0., 1.),
-                 num_bins: int=100, *, ageing: bool) -> list:
-    """For a given input of opinion values and group labels, this function
-    sorts the opinions by groups and outputs the opinions of each group over time.
-
-    Arguments:
-        data (ndarray): the opinion dataset
-        groups (ndarray): group label dataset
-        group_list (list): list of groups to sort by
-        val_range (tuple): range for the histogram binning
-        num_bins (int): number of bins for the histogram
-        ageing: (bool): whether the list of groups represents age intervals
+        data: the multiverse data containing coords and dims
+        key_to_ignore: a key that can be ignored even if it is a sweep dimension
+        (typically the seed)
 
     Raises:
-        ValueError: if the dimension of the group labels is greater than two
+        ValueError: if too many sweep dimensions are present and dim cannot be
+            inferred
+
+    Returns:
+        dim (str): the deduced sweep dimension
     """
-    data = np.asarray(data)
-    groups = np.asarray(groups)
-    if groups.ndim>2:
-        raise ValueError(f"Invalid array dimension {groups.ndim}! Group label"
-              " array must have dimension<3.")
-    time_steps = data.shape[0]
-    start, stop = val_range
-
-    if groups.ndim==2:
-        #check if all groups are covered by the given  groups; if not,
-        #add maximum groups number to make sure they are.
-        #This is necessary for pd.cut
-        max_group_number = np.amax(groups)
-        extended_groups = False
-        if max_group_number>=group_list[-1]:
-            extended_groups = True
-            group_list.append(max_group_number+1)
-
-        num_groups = len(group_list)-1 if ageing else len(group_list)
-
-        data_by_group = [[[] for _ in range(time_steps)] for k in range(num_groups)]
-        for t in range(time_steps):
-            m = [[] for _ in range(num_groups)]
-            group_bins = pd.cut(groups[t, :], group_list, labels=False,
-                                  include_lowest=True)
-            for i in range(data.shape[1]):
-                m[group_bins[groups[t, i]]].append(data[t, i])
-            for k in range(len(m)):
-                data_by_group[k][t] = m[k]
-
-        #if the age range was artificially extended, remove this additional
-        #age bin
-        if extended_groups:
-            data_by_group.pop(-1)
-            group_list.pop(-1)
-
+    if len(data.dims)>3:
+        have_key = False
+        for key in data.dims.keys():
+            if key not in ['vertex', 'time', key_to_ignore] and data.dims[key]>1:
+                if have_key:
+                    raise ValueError(f"Automatic sweep parameter deduction failed: "
+                          "too many dimensions! Use 'subspace' to select specific"
+                          " values for keys other than the desired sweep key!")
+                else:
+                    dim = key
+                    have_key = True
+        if not have_key:
+            raise ValueError("No sweep parameter available.")
     else:
-        num_groups = len(group_list)
-        data_by_group = [[[] for _ in range(time_steps)] for k in range(num_groups)]
-        i = np.argsort(groups)
-        data = data[:,i]
-        groups = groups[i]
-        idx_jumps = np.zeros(num_groups+1, dtype=int)
-        idx_jumps[-1] = data.shape[1]-1
-        j = 1
-        for i in range(data.shape[1]-1):
-            if(groups[i+1]>groups[i]):
-                idx_jumps[j]=i+1
-                j+=1
-        for t in range(time_steps):
-            for _ in range(num_groups):
-                data_by_group[_][t]=data[t, idx_jumps[_]:idx_jumps[_+1]]
+        have_key = False
+        for key in data.dims.keys():
+            if key=='time' or key=='vertex' or key==key_to_ignore:
+                continue
+            dim = key
+            have_key = True
+        if not have_key:
+            raise ValueError("No sweep parameter available.")
 
-    return data_by_group
+    log.info(f"Deduced sweep dimension '{dim}'")
+
+    return dim
+
+def get_keys_cfg(mv_data, config, *, keys_to_ignore: list) -> Tuple[dict, dict]:
+    """Modifies the multiverse keys to easily allow subspace selections to be
+    treated the same ways as full multiverse sweeps. The function sets the index
+    for the dataset selection for any subspace selections to 0, excluding the
+    time and vertex keys, as well as any other specified keys. This function also
+    modifies the cfg, such that the entry value of any non-sweep parameters
+    is the subspace selection. This allows the plot information box to display
+    the correct parameters for any given configuration.
+
+    Arguments:
+        mv_data (xdarray): the full multiverse data
+        config (dict): the original parameter space configuration, containing all
+            yaml tags and sweep values
+        keys_to_ignore (list, optional): any keys to ignore in the modification
+            process (typically the seed)
+
+    Raises:
+        ValueError: if the subspace selection is insufficient
+
+    Returns:
+        keys (dict): the dictionary of keys and corresponding subspace indices
+        config (dict): the modified configuration file
+    """
+    keys = dict(zip(dict(mv_data.dims).keys(), [0]*len(mv_data.dims)))
+    #vertex and the selected dimension will never be subspace selections,
+    #and should not be fixed to a single entry
+    for key in set(['vertex', 'time']+keys_to_ignore):
+        keys.pop(key)
+
+    #assert correct parameterspace dimensionality;
+    #manually set any subspace selection parameters in the cfg;
+    #for subspace selection: set value to 0 for access during data analysis
+    for key in keys:
+        if key=='seed' and len(mv_data.coords['seed'].data)>1:
+            keys['seed'] = [_ for _ in range(len(mv_data.coords['seed'].data))]
+            continue
+        elif mv_data.dims[key]>1:
+            raise ValueError(f"Too many dimensions! Use 'subspace' to "
+                             "select specific values for keys other than "
+                             f"{keys_to_ignore} and 'seed'!")
+        if key in ['life_expectancy', 'peer_radius', 'time_scale']:
+            config['OpDisc']['ageing'][key] = mv_data.coords[key].data[0]
+        else:
+            config['OpDisc'][key] = mv_data.coords[key].data[0]
+        keys[key] = 0
+
+    return keys, config

@@ -140,7 +140,19 @@ double rejection_func( double op_1, double op_2, double susc ){
     /** Interaction function in the rejecting case
       * \return opinion The new opinion
       */
-    if ((op_1<op_2) or (op_1==0. and op_2==0.)) {
+    if (op_1 == 0. or op_1 == 1.) {
+        return op_1;
+    }
+    else if ((op_1==0. or op_1==1.) and op_1==op_2){
+        return op_1;
+    }
+    else if (op_2==0.) {
+        return op_1 + susc*(1.-op_1);
+    }
+    else if (op_2==1.) {
+        return op_1 * (1.-susc);
+    }
+    else if (op_1<op_2) {
         return op_1*(1.-susc*((op_2-op_1)/(1.-op_1)));
     }
     else {

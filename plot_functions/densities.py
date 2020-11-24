@@ -18,9 +18,10 @@ def densities(dm: DataManager, *,
               uni: UniverseGroup,
               hlpr: PlotHelper,
               num_bins: int=100,
+              plot_kwargs: dict=None,
               title: str=None,
               val_range: tuple=(0., 1.)):
-    """Plots the density of opinion clusters over time.
+    """Plots the density of user opinion over time.
 
     Arguments:
         dm (DataManager): The data manager from which to retrieve the data
@@ -39,16 +40,7 @@ def densities(dm: DataManager, *,
     data = uni['data/OpDisc/nw/opinion']
     time_steps = data['time'].size
 
-    #data analysis and plotting.................................................
-    #calculate a histogram of the opinion distribution at each time step, and
-    #normalise each time step's histogram to 1 by dividing by the maximum count
-    #at that time step
-    data_to_plot = np.zeros((time_steps, num_bins))
-    for row in range(time_steps):
-        counts_at_time, _ = np.histogram(data[row, :], range=val_range,
-                                         bins=num_bins)
-        data_to_plot[row, :] = counts_at_time/np.max(counts_at_time)
-    hlpr.ax.set_xticks([i for i in np.linspace(0, num_bins-1, 11)])
-    hlpr.ax.set_xticklabels([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
-    hlpr.ax.imshow(data_to_plot, cmap='BuGn', interpolation='bilinear',
-                    aspect=num_bins/time_steps)
+    #data analysis and plotting................................................
+    hlpr.ax.plot(data[:, :], data['time'], **plot_kwargs)
+    hlpr.ax.set_xlim(val_range[0], val_range[1])
+    hlpr.ax.set_ylim(data['time'][-1], 0)

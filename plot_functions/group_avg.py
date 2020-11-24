@@ -6,7 +6,8 @@ import pandas as pd
 from utopya import DataManager, UniverseGroup
 from utopya.plotting import UniversePlotCreator, PlotHelper, is_plot_func
 
-from .tools import data_by_group, find_extremes, setup_figure
+from .data_analysis import data_by_group, find_const_vals, find_extrema
+from .tools import setup_figure
 
 # Get a logger
 log = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ def group_avg(dm: DataManager, *,
     time_steps = opinions['time'].size
     time = np.asarray(opinions['time'].data)
     hlpr.ax.set_xlim(0, 1)
-    hlpr.ax.set_ylim(time[-1], 0)
+    hlpr.ax.set_ylim(time[-1], time[0])
 
     #data analysis..............................................................
     #calculate mean opinion and std of each group
@@ -91,15 +92,16 @@ def group_avg(dm: DataManager, *,
 
     #temporary..................................................................
     #calculate the global mean and plot its turning points
-    mean_glob = pd.Series(np.mean(opinions, axis=1)).rolling(window=2).mean()
-    extremes = find_extremes(mean_glob, x=time)
-    hlpr.ax.plot(mean_glob, time, lw=1, color='black', label='avg', zorder=num_groups+1)
-    if extremes['osc']['y']:
-        hlpr.ax.scatter(x=extremes['osc']['y'], y=extremes['osc']['x'], s=10,
-                                   color='gray', alpha=0.8, zorder=num_groups+2)
-    if extremes['const']['y']:
-        hlpr.ax.scatter(x=extremes['const']['y'], y=extremes['const']['x'],
-                              s=10, color='red', alpha=0.8, zorder=num_groups+2)
-
+    # mean_glob = pd.Series(np.mean(opinions, axis=1)).rolling(window=20).mean()
+    # hlpr.ax.plot(mean_glob, time, lw=1, color='black', label='avg', zorder=num_groups+1)
+    #
+    # extremes = find_extrema(mean_glob, x=time)['max']
+    # if extremes['y']:
+    #      hlpr.ax.scatter(x=extremes['y'], y=extremes['x'], s=10, alpha=0.8, zorder=num_groups+2)
+    #
+    # constants = find_const_vals(mean_glob, time_steps, time=time, averaging_window=0.4, tolerance=0.01)
+    #
+    # if constants['t']:
+    #     hlpr.ax.scatter(x=constants['x'], y=constants['t'], s=10, color='red', alpha=0.8, zorder=num_groups+2)
     hlpr.ax.legend(bbox_to_anchor=(1, 1.01), loc='lower right',
                    ncol=num_groups+1, fontsize='xx-small')

@@ -20,7 +20,7 @@ opinion_groups:
       - opinion_groups
       - .cycler.high_contrast_colors
     time_idx:
-    age_groups: [10, 20, 40, 60, 80]
+    age_groups: [10, 20, 30, 40, 50, 60, 70, 80]
     animation:
       animation_update_kwargs:
         stepsize: 10
@@ -29,24 +29,91 @@ opinion_groups:
           init:
             fps: 8
 
+opinion_at_time:
+    based_on:
+      - opinion_at_time
+      - .cycler.high_contrast_colors
+    time_step: 1 #float between 0 (first time step) and 1 (last time step)
+    to_plot: discriminators
+    age_groups: [10, 20, 30, 40, 50, 60, 70, 80]
+    # plot_kwargs:
+    #   color: 'slategray'
+
 # ..... Multiverse plots .......................................................
+absolute_area:
+  based_on:
+    - sweep1d
+    - .cycler.high_contrast_colors
+  to_plot: absolute_area
+
+area:
+  based_on:
+    - sweep1d
+    - .cycler.high_contrast_colors
+  to_plot: absolute_area
+  select:
+    subspace:
+      number_of_groups: [3] #3, 5, 7, 9
+      homophily_parameter: [0.3] #0.1, 0.3, 0.6, 0.95
+
 bifurcation:
     based_on: bifurcation
-    dim: tolerance
-    select:
-        fields:
-             opinion: data/OpDisc/nw/opinion
+    dim: homophily_parameter
+    plot_kwargs:
+      alpha: 0.4
 
 group_avgs_anim:
    based_on:
-     - group_avg_anim
+     - group_avgs_anim
      - .cycler.bright_colors
-   select:
-       fields:
-           opinion: data/OpDisc/nw/opinion
-           group_label: data/OpDisc/nw/group_label
-
-   dim: homophily_parameter
+   dim: discriminators
    animation:
      enabled: True
    write: False
+
+abs_area_1d:
+  based_on:
+    - sweep1d
+    - .cycler.high_contrast_colors
+  plot_by_groups: True
+  age_groups: [10, 20, 30, 40, 50, 60, 70, 80]
+  plot_kwargs:
+    lw: 2
+  to_plot: absolute_area
+
+abs_area_2d:
+  based_on:
+    - sweep2d
+  x: homophily_parameter
+  y: peer_radius
+  to_plot: absolute_area
+  # plot_kwargs:
+  #   vmin: 0
+  #   vmax: 80
+
+area_2d:
+  based_on:
+    - sweep2d
+  x: homophily_parameter
+  y: peer_radius
+  to_plot: area
+  # plot_kwargs:
+  #   vmin: 0
+  #   vmax: 80
+
+area_1d:
+  based_on:
+    - sweep1d
+    - .cycler.high_contrast_colors
+  plot_by_groups: True
+  age_groups: [10, 20, 30, 40, 50, 60, 70, 80]
+  plot_kwargs:
+    lw: 2
+  to_plot: area
+
+stddevs_2d:
+  based_on:
+    - sweep2d
+  x: homophily_parameter
+  y: tolerance
+  to_plot: avg_of_stddevs

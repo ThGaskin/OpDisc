@@ -7,7 +7,8 @@ import pandas as pd
 from utopya import DataManager, UniverseGroup
 from utopya.plotting import UniversePlotCreator, PlotHelper, is_plot_func
 
-from .tools import data_by_group, setup_figure
+from .data_analysis import data_by_group
+from .tools import setup_figure
 
 log = logging.getLogger(__name__)
 logging.getLogger('matplotlib.animation').setLevel(logging.WARNING)

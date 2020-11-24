@@ -5,18 +5,29 @@ bifurcation:
     expected_multiverse_ndim: [1,2,3,4,5]
     module: model_plots.OpDisc
     plot_func: bifurcation
+    plot_kwargs:
+      alpha: 0.8
+      color: navy
+      s: 5
+    select:
+        fields:
+             opinion: data/OpDisc/nw/opinion
 
 densities:
     creator: universe
     universes: all
     module: model_plots.OpDisc
     plot_func: densities
+    file_ext: pdf
     helpers:
        set_labels:
           x: User opinion
-          y: Time [writes]
+          y: Time [step]
     num_bins: 100
-    file_ext: pdf
+    plot_kwargs:
+      alpha: 0.01
+      color: navy
+      lw: 0.6
 
 group_avgs:
     creator: universe
@@ -28,17 +39,20 @@ group_avgs:
            x: User opinion
            y: Time
 
-group_avg_anim:
+group_avgs_anim:
     creator: multiverse
     expected_multiverse_ndim: [1,2,3,4,5]
     module: model_plots.OpDisc
-    plot_func: group_avg_anim
+    plot_func: group_avgs_anim
+    select:
+        fields:
+            opinion: data/OpDisc/nw/opinion
+            group_label: data/OpDisc/nw/group_label
     helpers:
        set_labels:
           x: User opinion
           y: Time [step]
     num_bins: 100 #number of bins to be used for histogram
-    val_range: [0, 1]
     write: False
     animation:
       enabled: True
@@ -84,6 +98,14 @@ opinion_animation:
       writer: ffmpeg
     file_ext: mp4
 
+opinion_at_time:
+    creator: universe
+    universes: all
+    module: model_plots.OpDisc
+    plot_func: opinion_at_time
+    num_bins: 100
+    val_range: [0, 1]
+
 opinion_groups:
     creator: universe
     universes: all
@@ -111,6 +133,29 @@ opinion_groups:
       writer: ffmpeg
     file_ext: mp4
 
+sweep1d:
+    creator: multiverse
+    expected_multiverse_ndim: [1,2,3,4,5]
+    module: model_plots.OpDisc
+    plot_func: sweep1d
+    plot_kwargs:
+       elinewidth: 0.4
+    select:
+      fields:
+        opinion: data/OpDisc/nw/opinion
+        group_label: data/OpDisc/nw/group_label
+
+sweep2d:
+  creator: multiverse
+  expected_multiverse_ndim: [2,3,4,5]
+  module: model_plots.OpDisc
+  plot_func: sweep2d
+  select:
+    fields:
+      opinion: data/OpDisc/nw/opinion
+      #group_label: data/OpDisc/nw/group_label
+
+
 #-------------------------------------------------------------------------------
 #color cyclers
 .cycler.bright_colors:
@@ -120,14 +165,13 @@ opinion_groups:
                       'cornflowerblue','slategray','peru','saddlebrown','black'])"
 .cycler.dark_colors:
   style:
-    axes.prop_cycle: "cycler('color', ['slategray', 'dodgerblue', 'cornflowerblue',
-                             'navy', 'slategray', 'darkorange', 'royalblue',
+    axes.prop_cycle: "cycler('color', ['slategray', 'navy', 'cornflowerblue',
+                             'darkorange', 'dodgerblue', 'royalblue',
                              'peru', 'orange', 'darkred','indigo','saddlebrown',
                              'firebrick','black'])"
 .cycler.high_contrast_colors:
   style:
     axes.prop_cycle: "cycler('color', ['gold', 'cornflowerblue', 'darkorange',
-                             'navy', 'orangered', 'peru', 'navy', 'darkorange',
-                             'indigo', 'royalblue', 'firebrick',
-                             'cornflowerblue', 'darkred', 'slategray',
-                             'saddlebrown','black'])"
+                             'navy', 'orangered', 'peru', 'indigo', 'royalblue',
+                             'darkred', 'slategray', 'saddlebrown',
+                             'black'])"
